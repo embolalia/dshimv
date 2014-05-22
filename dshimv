@@ -8,38 +8,52 @@ import ConfigParser
 
 
 class ServiceUnit(object):
-    def __init__(self, filename):
+    def __init__(self, script_file):
         self.parser = ConfigParser.SafeConfigParser()
         self.parser.read(script_file)
         self.unit_name = os.path.basename(script_file)
         pid_fname = '/var/run/{0}.pid'.format(self.unit_name)
         self.pid_fname = self._get('PIDFile', pid_fname)
-        self.type_ = _get('Type', 'simple')
+        pid_dir = os.path.dirname(self.pid_fname)
+        if not os.path.isdir(pid_dir):
+            os.mkdir(pid_dir)
+        self.type_ = self._get('Type', 'simple')
 
-    def _get(self, name, default):
+    def _get(self, name, default=None):
         """Grab a [Service] section value, or a default if not present."""
         try:
             value = self.parser.get('Service', name)
         except ConfigParser.Error:
-            value = default
-        return default
+            if default:
+                value = default
+            else:
+                raise ValueError
+        return value
 
-    def start():
+    def start(self):
         action = self._get('ExecStart')
+        user = self._get('User')  # TODO can this be unspecified?
+        action = 'sudo -iu {} {}'.format(user, action)
         pid = os.fork()
         if pid == 0:
             subprocess.call(action, shell=True)
         else:
-            with open(pid_fname, 'w') as pid_file:
+            with open(self.pid_fname, 'w') as pid_file:
                 pid_file.write(str(pid))
-            sys.exit()
 
-    def stop():
+    def stop(self):
         action = self._get('ExecStop')
+        print(self.pid_fname)
         with open(self.pid_fname) as pid_file:
             pid = pid_file.readline().strip()
+        print('stopping {}'.format(pid))
         os.environ['MAINPID'] = pid
         subprocess.call(action, shell=True)
+        print('pid should be stopped')
+
+    def restart(self):
+        self.stop()
+        self.start()
 
 
 def main(argv=sys.argv):
@@ -52,7 +66,7 @@ def main(argv=sys.argv):
     elif action == 'stop':
         unit.stop()
     elif action == 'restart':
-        pass
+        unit.restart()
     elif action == 'force-reload':
         pass
     elif action == 'status':
