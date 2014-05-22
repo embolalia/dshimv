@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+import os
+import subprocess
+import sys
+
+import ConfigParser
+
+
+class ServiceUnit(object):
+    def __init__(self, filename):
+        self.parser = ConfigParser.SafeConfigParser()
+        self.parser.read(script_file)
+        self.unit_name = os.path.basename(script_file)
+        pid_fname = '/var/run/{0}.pid'.format(self.unit_name)
+        self.pid_fname = self._get('PIDFile', pid_fname)
+        self.type_ = _get('Type', 'simple')
+
+    def _get(self, name, default):
+        """Grab a [Service] section value, or a default if not present."""
+        try:
+            value = self.parser.get('Service', name)
+        except ConfigParser.Error:
+            value = default
+        return default
+
+    def start():
+        action = self._get('ExecStart')
+        pid = os.fork()
+        if pid == 0:
+            subprocess.call(action, shell=True)
+        else:
+            with open(pid_fname, 'w') as pid_file:
+                pid_file.write(str(pid))
+            sys.exit()
+
+    def stop():
+        action = self._get('ExecStop')
+        with open(self.pid_fname) as pid_file:
+            pid = pid_file.readline().strip()
+        os.environ['MAINPID'] = pid
+        subprocess.call(action, shell=True)
+
+
+def main(argv=sys.argv):
+    if len(argv) != 3:
+        raise ValueError
+    _, script_file, action = argv
+    unit = ServiceUnit(script_file)
+    if action == 'start':
+        unit.start()
+    elif action == 'stop':
+        unit.stop()
+    elif action == 'restart':
+        pass
+    elif action == 'force-reload':
+        pass
+    elif action == 'status':
+        pass
+    else:
+        raise ValueError
+
+if __name__ == '__main__':
+    main()
