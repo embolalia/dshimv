@@ -1,0 +1,24 @@
+#!/usr/bin/dshimv
+
+# This serves as an example of how a systemd service file can be modified to
+# work with dshimv. Everything above here is to do that, everything below is
+# copied verbatim from the service file for the world's best IRC bot at
+# https://github.com/embolalia/willie/blob/master/contrib/willie.service
+
+[Unit]
+Description=Willie IRC bot
+Documentation=http://willie.dftba.net/
+After=network.target
+
+[Service]
+Type=simple
+User=willie
+PIDFile=/run/willie/willie.pid
+ExecStart=/usr/bin/willie -c /etc/willie.cfg --quiet
+ExecStop=/bin/kill -USR1 $MAINPID
+Restart=on-failure
+RestartPreventExitStatus=2
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
