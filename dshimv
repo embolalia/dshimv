@@ -63,6 +63,18 @@ class ServiceUnit(object):
                                 preexec_fn=self._set_user, )
         return proc
 
+    def _exec_with_pid(self, action):
+        """Same as _exec, but sets $MAINPID first"""
+        self.environ['MAINPID'] = self.get_pid()
+        return self._exec(action)
+
+    def get_pid(self):
+        with open(self.pid_fname) as pid_file:
+            pid = pid_file.readline()
+        return pid.strip()
+
+    # # # # LSB standard actions # # # #
+
     def start(self):
         action = self._get('ExecStart')
         proc = self._exec(action)
@@ -71,14 +83,41 @@ class ServiceUnit(object):
 
     def stop(self):
         action = self._get('ExecStop')
-        with open(self.pid_fname) as pid_file:
-            pid = pid_file.readline().strip()
-        self.environ['MAINPID'] = pid
-        self._exec(action)
+        _exec_with_pid(action)
 
     def restart(self):
         self.stop()
         self.start()
+
+    def reload_(self):
+        action = self._get('ExecReload')
+        _exec_with_pid(action)
+
+    def force_reload(self):
+        try:
+            action = self._get('ExecReload')
+            _exec_with_pid(action)
+        except ValueError:
+            self.stop()
+            self.start()
+
+    def status(self):
+        # TODO exit(2) if /var/lock file exists?
+        try:
+            pid = self.get_pid()
+        except IOError:
+            exit = 3
+        else:
+            try:
+                os.kill(int(pid))
+            except OSError:
+                exit = 1
+            else:
+                exit = 0
+        if exit == 0:
+            print('Service {} running with PID {}'.format(self.unit_name, pid))
+        else:
+            print('Service {} not running'.format(self.unit_name))
 
 
 def main(argv=sys.argv):
@@ -92,10 +131,12 @@ def main(argv=sys.argv):
         unit.stop()
     elif action == 'restart':
         unit.restart()
+    elif action == 'reload':
+        unit.reload_()
     elif action == 'force-reload':
-        pass
+        unit.force_reload()
     elif action == 'status':
-        pass
+        unit.status()
     else:
         raise ValueError
 
