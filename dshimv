@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-
-import os
-import subprocess
-import sys
+# coding=utf8
 
 import ConfigParser
+import grp
+import os
+import pwd
+import subprocess
+import sys
 
 
 class ServiceUnit(object):
@@ -18,6 +20,31 @@ class ServiceUnit(object):
         if not os.path.isdir(pid_dir):
             os.mkdir(pid_dir)
         self.type_ = self._get('Type', 'simple')
+        self.environ = os.environ.copy()
+
+    def _set_user(self):
+        """Change to the user specified in the service file"""
+        try:
+            user = self._get('User')
+        except ValueError:
+            return
+
+        if user.isdigit():
+            pwd_entry = pwd.getpwuid(user)
+        else:
+            pwd_entry = pwd.getpwnam(user)
+        self.environ['HOME'] = pw_entry.pw_dir
+        self.environ['LOGNAME'] = pw_entry.pw_name
+        self.environ['USER'] = pw_entry.pw_name
+        self.environ['SHELL'] = pw_entry.pw_shell
+
+        group = self._get('Group', pwd_entry.pwd_gid)
+        if group.isdigit():
+            grp_entry = grp.getgrgid(group)
+        else:
+            grp_entry = grp.getgrgid(group)
+        os.setgid(grp_entry.gr_gid)
+        os.setuid(pwd_entry.pwd_uid)
 
     def _get(self, name, default=None):
         """Grab a [Service] section value, or a default if not present."""
@@ -30,26 +57,24 @@ class ServiceUnit(object):
                 raise ValueError
         return value
 
+    def _exec(self, action):
+        """Executes the given action and returns the Popen object"""
+        proc = subprocess.Popen(action, shell=True, env=self.environ,
+                                preexec_fn=self._set_user, )
+        return proc
+
     def start(self):
         action = self._get('ExecStart')
-        user = self._get('User')  # TODO can this be unspecified?
-        action = 'sudo -iu {} {}'.format(user, action)
-        pid = os.fork()
-        if pid == 0:
-            subprocess.call(action, shell=True)
-        else:
-            with open(self.pid_fname, 'w') as pid_file:
-                pid_file.write(str(pid))
+        proc = self._exec(action)
+        with open(self.pid_fname, 'w') as pid_file:
+            pid_file.write(str(proc.pid))
 
     def stop(self):
         action = self._get('ExecStop')
-        print(self.pid_fname)
         with open(self.pid_fname) as pid_file:
             pid = pid_file.readline().strip()
-        print('stopping {}'.format(pid))
-        os.environ['MAINPID'] = pid
-        subprocess.call(action, shell=True)
-        print('pid should be stopped')
+        self.environ['MAINPID'] = pid
+        self._exec(action)
 
     def restart(self):
         self.stop()
