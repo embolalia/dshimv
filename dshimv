@@ -21,7 +21,7 @@ class ServiceUnit(object):
         pid_dir = os.path.dirname(self.pid_fname)
         if not os.path.isdir(pid_dir):
             os.mkdir(pid_dir)
-        self.type_ = self._get('Type', 'simple')
+        self._type = self._get('Type', 'simple')
         self.environ = os.environ.copy()
 
     def _set_user(self):
@@ -40,20 +40,20 @@ class ServiceUnit(object):
         self.environ['USER'] = pwd_entry.pw_name
         self.environ['SHELL'] = pwd_entry.pw_shell
 
-        group = self._get('Group', pwd_entry.pwd_gid)
-        if group.isdigit():
-            grp_entry = grp.getgrgid(group)
+        group = self._get('Group', False)
+        if group:
+            grp_entry = grp.getgrgid(int(group))
         else:
-            grp_entry = grp.getgrgid(group)
+            grp_entry = grp.getgrgid(pwd_entry.pw_gid)
         os.setgid(grp_entry.gr_gid)
-        os.setuid(pwd_entry.pwd_uid)
+        os.setuid(pwd_entry.pw_uid)
 
     def _get(self, name, default=None):
         """Grab a [Service] section value, or a default if not present."""
         try:
             value = self.parser.get('Service', name)
         except ConfigParser.Error:
-            if default:
+            if default is not None:
                 value = default
             else:
                 raise KeyError
@@ -62,7 +62,7 @@ class ServiceUnit(object):
     def _exec(self, action):
         """Executes the given action and returns the Popen object"""
         proc = subprocess.Popen(action, shell=True, env=self.environ,
-                                preexec_fn=self._set_user, )
+                                preexec_fn=self._set_user)
         return proc
 
     def _exec_with_pid(self, action):
@@ -78,14 +78,40 @@ class ServiceUnit(object):
     # # # # LSB standard actions # # # #
 
     def start(self):
+        try:
+            action = self._get('ExecStartPre')
+        except KeyError:
+            pass
+        else:
+            self._exec(action)
+
         action = self._get('ExecStart')
         proc = self._exec(action)
         with open(self.pid_fname, 'w') as pid_file:
             pid_file.write(str(proc.pid))
 
+        # oneshot and forking both expect the process that gets called to
+        # finish before we continue. We can do that for them.
+        if self._type in ('oneshot', 'forking'):
+            proc.wait()
+
+        try:
+            action = self._get('ExecStartPost')
+        except KeyError:
+            pass
+        else:
+            self._exec(action)
+
     def stop(self):
         action = self._get('ExecStop')
         self._exec_with_pid(action)
+
+        try:
+            action = self._get('ExecStopPost')
+        except KeyError:
+            pass
+        else:
+            self._exec(action)
 
     def restart(self):
         self.stop()
@@ -111,12 +137,12 @@ class ServiceUnit(object):
             exit_ = 3
         else:
             try:
-                os.kill(int(pid))
+                os.kill(int(pid), 0)
             except OSError:
                 exit_ = 1
             else:
                 exit_ = 0
-        if exit == 0:
+        if exit_ == 0:
             print('Service {} running with PID {}'.format(self.unit_name, pid))
         else:
             print('Service {} not running'.format(self.unit_name))
