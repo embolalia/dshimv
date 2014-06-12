@@ -7,6 +7,7 @@ import ConfigParser
 import grp
 import os
 import pwd
+import shlex
 import subprocess
 import sys
 
@@ -61,13 +62,22 @@ class ServiceUnit(object):
 
     def _exec(self, action):
         """Executes the given action and returns the Popen object"""
-        proc = subprocess.Popen(action, shell=True, env=self.environ,
+        # Without a shell in popen, we need to do env vars ourselves.
+        print action
+        os.environ = self.environ
+        action = os.path.expandvars(action)
+        # shlexing so we don't need a shell in Popen, and get the right pid
+        print action
+        action = shlex.split(action, comments=True)
+        print action
+        proc = subprocess.Popen(action, env=self.environ,
                                 preexec_fn=self._set_user)
         return proc
 
     def _exec_with_pid(self, action):
         """Same as _exec, but sets $MAINPID first"""
         self.environ['MAINPID'] = self.get_pid()
+        print self.environ['MAINPID']
         return self._exec(action)
 
     def get_pid(self):
@@ -87,8 +97,12 @@ class ServiceUnit(object):
 
         action = self._get('ExecStart')
         proc = self._exec(action)
-        with open(self.pid_fname, 'w') as pid_file:
-            pid_file.write(str(proc.pid))
+        print proc.pid
+        # Don't write to the PidFile if it was actually specified.
+        if not self.parser.has_option('Service', 'PidFile'):
+            print 'printing'
+            with open(self.pid_fname, 'w') as pid_file:
+                pid_file.write(str(proc.pid))
 
         # oneshot and forking both expect the process that gets called to
         # finish before we continue. We can do that for them.
