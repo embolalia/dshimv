@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="dshimv : A shim to allow systemd service unit files to be used as SysV init scripts" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>dshimv</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/embolalia/dshimv">View on GitHub</a>
+
+          <h1 id="project_title">dshimv</h1>
+          <h2 id="project_tagline">A shim to allow systemd service unit files to be used as SysV init scripts</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/embolalia/dshimv/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/embolalia/dshimv/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <p><a href="http://developerblog.redhat.com/2014/06/10/red-hat-enterprise-linux-7-now-generally-available/">RHEL  7 is out</a>, and ships with systemd, and CentOS 7 will be doing the
+same shortly.. <a href="https://lwn.net/Articles/585363/">Debian</a> and <a href="http://www.markshuttleworth.com/archives/1316">Ubuntu</a> are planning it for their future
+releases. Soon, systemd will be a de facto standard for new Linux distro
+releases. But the chances of all your users being on new releases any time in
+the near future could be pretty low. (<a href="http://www.reddit.com/r/linux/comments/27sbwc/red_hat_enterprise_linux_7_now_generally_available/ci3x348">One poor soul</a> still has customers on
+RHEL 4.)</p>
+
+<p>So you have some choices. If you want to use any of systemd's new features,
+you'll have to either abandon the users who can't or won't upgrade, or maintain
+init stuff for both SysV and systemd. Or, you can use <code>dshimv</code>.</p>
+
+<p><code>dshimv</code> lets you plop your systemd service unit file into your <code>/etc/init.d</code>
+just as if it were a regular SysV init script by just adding one extra line to
+it.</p>
+
+<h1>
+<a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works</h1>
+
+<p>Any Linux developer is at least a little familiar with <code>#!</code> - two magic
+characters at the beginning of a script to tell it what interpreter to use. But
+nothing limits it to scripts; all <code>#!</code> does is run whatever command you give it
+adding file name as an argument, followed by whatever arguments you gave when
+you executed the file (So if <code>foo.py</code> has <code>#!/usr/bin/env python</code>,
+<code>./foo.py bar</code> runs <code>/usr/bin/env python foo.py bar</code>). That command can do
+whatever it wants with the file.</p>
+
+<p><code>dshimv</code> is a program that takes a systemd service unit file and an action. It
+parses the file and gets the command associated with that action, and runs it.
+So if you take a systemd service unit file, and throw a <code>#!</code> at the top
+pointing to <code>dshimv</code>, you now have an executable that acts just like a SysV
+Init script.</p>
+
+<h1>
+<a name="how-to-use-it" class="anchor" href="#how-to-use-it"><span class="octicon octicon-link"></span></a>How to use it</h1>
+
+<ol>
+<li>Install <code>dshimv</code> by placing the <code>dshimv</code> file in <code>/usr/bin</code>.</li>
+<li>Add <code>#!/usr/bin/dshimv</code> to the first line ofyour systemd service unit file</li>
+<li>Put that unit file in <code>/etc/init.d</code>
+</li>
+<li><code>chown root:root /etc/init.d/$YOUR_FILE; chmod 0700 /etc/init.d/$YOUR_FILE</code></li>
+<li><code>service $YOUR_FILE start</code></li>
+</ol><h1>
+<a name="limitations" class="anchor" href="#limitations"><span class="octicon octicon-link"></span></a>Limitations</h1>
+
+<p>Obviously, anything that SysV Init isn't able to handle, <code>dshimv</code> can't do
+either. You can use <code>dshimv</code> with Upstart, but while Upstart does have some
+features beyond SysV that it shares with systemd, <code>dshimv</code> doesn't make any
+attempt to expose that.</p>
+
+<p>Additionally, <code>dshimv</code> currently uses Python's <code>ConfigParser</code> to parse
+files, and that may or may not have some differences from how systemd parses in
+some edge cases. For simplicity, <code>dshimv</code> also uses simple shell execution of
+the specified commands, rather than the limited subset that systemd does. This
+means <code>dshimv</code> is a bit more permissive about what's valid than systemd.
+Finally, there is almost certainly a performance detriment to using <code>dshimv</code>
+over native scripts, though only when starting/stopping/etc. a service.</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">dshimv maintained by <a href="https://github.com/embolalia">embolalia</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
