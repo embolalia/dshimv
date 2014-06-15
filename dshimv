@@ -63,13 +63,10 @@ class ServiceUnit(object):
     def _exec(self, action):
         """Executes the given action and returns the Popen object"""
         # Without a shell in popen, we need to do env vars ourselves.
-        print action
         os.environ = self.environ
         action = os.path.expandvars(action)
         # shlexing so we don't need a shell in Popen, and get the right pid
-        print action
         action = shlex.split(action, comments=True)
-        print action
         proc = subprocess.Popen(action, env=self.environ,
                                 preexec_fn=self._set_user)
         return proc
@@ -77,7 +74,6 @@ class ServiceUnit(object):
     def _exec_with_pid(self, action):
         """Same as _exec, but sets $MAINPID first"""
         self.environ['MAINPID'] = self.get_pid()
-        print self.environ['MAINPID']
         return self._exec(action)
 
     def get_pid(self):
@@ -97,10 +93,8 @@ class ServiceUnit(object):
 
         action = self._get('ExecStart')
         proc = self._exec(action)
-        print proc.pid
         # Don't write to the PidFile if it was actually specified.
         if not self.parser.has_option('Service', 'PidFile'):
-            print 'printing'
             with open(self.pid_fname, 'w') as pid_file:
                 pid_file.write(str(proc.pid))
 
@@ -117,7 +111,11 @@ class ServiceUnit(object):
             self._exec(action)
 
     def stop(self):
-        action = self._get('ExecStop')
+        action = self._get('ExecStop', None)
+        if not action:
+            # TODO: implement timeout, see
+            # http://www.freedesktop.org/software/systemd/man/systemd.kill.html
+            action = 'kill -TERM $MAINPID'
         self._exec_with_pid(action)
 
         try:
