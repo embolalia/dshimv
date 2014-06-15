@@ -1,8 +1,9 @@
 #!/usr/bin/dshimv
 
 # This serves as an example of how a systemd service file can be modified to
-# work with dshimv. Everything above here is to do that, everything below is
-# copied verbatim from the service file for the world's best IRC bot at
+# work with dshimv. Everything above here is to do that, everything below
+# (except one comment) is copied verbatim from the service file for the world's
+# best IRC bot at
 # https://github.com/embolalia/willie/blob/master/contrib/willie.service
 # If you're trying this out, note that this service file makes assumptions that
 # you'll need to mirror. There needs to be a `willie` user, a config file at
@@ -20,6 +21,9 @@ Type=simple
 User=willie
 PIDFile=/run/willie/willie-willie.pid
 ExecStart=/usr/bin/willie -c /etc/willie.cfg --quiet
+# Note that stuff below here isn't supported by dshimv. It's left in, though,
+# to emphasize that all you really need to make your script work is the shebang
+# at the top.
 Restart=on-failure
 RestartPreventExitStatus=2
 RestartSec=30
