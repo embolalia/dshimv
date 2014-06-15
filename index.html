@@ -31,8 +31,8 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <p><a href="http://developerblog.redhat.com/2014/06/10/red-hat-enterprise-linux-7-now-generally-available/">RHEL  7 is out</a>, and ships with systemd, and CentOS 7 will be doing the
-same shortly.. <a href="https://lwn.net/Articles/585363/">Debian</a> and <a href="http://www.markshuttleworth.com/archives/1316">Ubuntu</a> are planning it for their future
+        <p><a href="http://developerblog.redhat.com/2014/06/10/red-hat-enterprise-linux-7-now-generally-available/">RHEL 7 is out</a>, and ships with systemd, and CentOS 7 will be doing the same
+shortly.. <a href="https://lwn.net/Articles/585363/">Debian</a> and <a href="http://www.markshuttleworth.com/archives/1316">Ubuntu</a> are planning it for their future
 releases. Soon, systemd will be a de facto standard for new Linux distro
 releases. But the chances of all your users being on new releases any time in
 the near future could be pretty low. (<a href="http://www.reddit.com/r/linux/comments/27sbwc/red_hat_enterprise_linux_7_now_generally_available/ci3x348">One poor soul</a> still has customers on
@@ -42,9 +42,11 @@ RHEL 4.)</p>
 you'll have to either abandon the users who can't or won't upgrade, or maintain
 init stuff for both SysV and systemd. Or, you can use <code>dshimv</code>.</p>
 
-<p><code>dshimv</code> lets you plop your systemd service unit file into your <code>/etc/init.d</code>
-just as if it were a regular SysV init script by just adding one extra line to
-it.</p>
+<p><code>dshimv</code> won't magically turn SysV into systemd, but it lets you plop
+your systemd service unit file into your <code>/etc/init.d</code> just as if it were a
+regular SysV init script by just adding one extra line to it. It can't make all
+of systemd's features work, but it lets your service gracefully fall back to a
+decent subset.</p>
 
 <h1>
 <a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works</h1>
@@ -67,14 +69,25 @@ Init script.</p>
 <a name="how-to-use-it" class="anchor" href="#how-to-use-it"><span class="octicon octicon-link"></span></a>How to use it</h1>
 
 <ol>
-  <li>Install <code>dshimv</code> by placing the <code>dshimv</code> file in <code>/usr/bin</code>, or install the <a href="https://github.com/embolalia/dshimv/releases/download/0.0.1/dshimv-0.0.1-1.el6.noarch.rpm">RPM</a></li>
+<li>Install <code>dshimv</code> by placing the <code>dshimv</code> file in <code>/usr/bin</code>, or grab the RPM
+for the <a href="https://github.com/embolalia/dshimv/releases/latest">latest release</a>.</li>
 <li>Add <code>#!/usr/bin/dshimv</code> to the first line ofyour systemd service unit file</li>
 <li>Put that unit file in <code>/etc/init.d</code>
 </li>
 <li><code>chown root:root /etc/init.d/$YOUR_FILE; chmod 0700 /etc/init.d/$YOUR_FILE</code></li>
 <li><code>service $YOUR_FILE start</code></li>
-</ol><h1>
+</ol><p>You can also add <a href="http://refspecs.linuxfoundation.org/LSB_4.1.0/LSB-Core-generic/LSB-Core-generic/initscrcomconv.html">LSB init script headers</a>, if you want that functionality.
+Unfortunately, there doesn't seem to be a way to make the system get that
+data from execution of the script (meaning <code>dshimv</code> can't make the comments for
+you), but the ability to build those headers from the data in your service file
+(so that you can copy them in) is <a href="https://github.com/embolalia/dshimv/issues/3">planned</a></p>
+
+<h1>
 <a name="limitations" class="anchor" href="#limitations"><span class="octicon octicon-link"></span></a>Limitations</h1>
+
+<p>A number of features that can be done haven't been implemented yet. The
+<a href="https://github.com/embolalia/dshimv/issues">issue tracker</a> has many of these filed. If you notice any more, please file
+them so we know they need to be done!</p>
 
 <p>Obviously, anything that SysV Init isn't able to handle, <code>dshimv</code> can't do
 either. You can use <code>dshimv</code> with Upstart, but while Upstart does have some
