@@ -1,12 +1,12 @@
 Name:		dshimv
-Version:	0.0.1
+Version:	0.0.2
 Release:	1%{?dist}
 Summary:	A shim to allow systemd units to be used as SysV init scripts
 
 Group:		Applications/System
 License:	GPL v3
 URL:		https://github.com/embolalia/dshimv
-Source0:	https://github.com/embolalia/dshimv/archive/0.0.1.tar.gz
+Source0:	https://github.com/embolalia/dshimv/archive/%{version}.tar.gz
 
 Requires:	python
 BuildArch:  noarch
